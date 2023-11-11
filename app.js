@@ -19,8 +19,6 @@ const initializeDB = async () => {
 
 initializeDB();
 
-const SECRET_KEY = "your-secret-key";-
-
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization;
 
@@ -28,7 +26,7 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: "Invalid JWT Token" });
   }
 
-  jwt.verify(token, SECRET_KEY, (err, user) => {
+  jwt.verify(token, "nknknrrfllffl", (err, user) => {
     if (err) {
       return res.status(401).json({ message: "Invalid JWT Token" });
     }
@@ -38,32 +36,74 @@ const verifyToken = (req, res, next) => {
 };
 
 app.post("/register", async (request, response) => {
-  const { username, password, name, gender } = request.body;
-  const selectUserQuery = "SELECT * FROM user WHERE username = ?";
-  const dbUser = await db.get(selectUserQuery, [username]);
+  try {
+    const { username, password, name, gender } = request.body;
+    const selectUserQuery = "SELECT * FROM user WHERE username = ?";
+    const dbUser = await db.get(selectUserQuery, [username]);
 
-  if (dbUser === undefined) {
-    if (password.length < 6) {
-      response.status(400);
-      response.send("Password is too short");
+    if (dbUser === undefined) {
+      if (password.length < 6) {
+        response.status(400);
+        response.send("Password is too short");
+      } else {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const createUserQuery = `
+          INSERT INTO user (name, username, password, gender)
+          VALUES(?, ?, ?, ?);
+        `;
+        await db.run(createUserQuery, [name, username, hashedPassword, gender]);
+
+        response.status(200);
+        response.send("User created successfully");
+      }
     } else {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const createUserQuery = `
-        INSERT INTO user (name, username, password, gender)
-        VALUES(?, ?, ?, ?);
-      `;
-      await db.run(createUserQuery, [name, username, hashedPassword, gender]);
-
-      response.status(200);
-      response.send("User created successfully");
+      response.status(400);
+      response.send("User already exists");
     }
-  } else {
-    response.status(400);
-    response.send("User already exists");
+  } catch (error) {
+    console.error("Registration error:", error);
+    response.status(500);
+    response.send("Internal Server Error");
   }
 });
 
 app.post("/login", async (request, response) => {
+  try {
+    const { username, password } = request.body;
+    console.log("Received request with username:", username);
+
+    const selectUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
+    console.log("Query:", selectUserQuery);
+
+    const dbUser = await db.get(selectUserQuery);
+    console.log("User from DB:", dbUser);
+
+    if (dbUser === undefined) {
+      console.log("Invalid User");
+      response.status(400);
+      response.send("Invalid User");
+    } else {
+      const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
+      if (isPasswordMatched === true) {
+        const payload = {
+          username: username,
+        };
+        const jwtToken = jwt.sign(payload, "nknknrrfllffl");
+        response.send({ jwtToken });
+      } else {
+        console.log("Invalid Password");
+        response.status(400);
+        response.send("Invalid Password");
+      }
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    response.status(500);
+    response.send("Internal Server Error");
+  }
+});
+
+/* app.post("/login", async (request, response) => {
   const { username, password } = request.body;
   const selectUserQuery = "SELECT * FROM user WHERE username = ?";
   const dbUser = await db.get(selectUserQuery, [username]);
@@ -80,7 +120,7 @@ app.post("/login", async (request, response) => {
       response.send("Invalid password");
     }
   }
-});
+}); */
 
 app.get("/user/tweets/feed", verifyToken, async (request, response) => {
   try {
