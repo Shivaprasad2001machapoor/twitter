@@ -35,7 +35,37 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-app.post("/register", async (request, response) => {
+app.post("/register/", async (request, response) => {
+  const { username, password, name, gender } = request.body;
+  const selectUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
+  const dbUser = await db.get(selectUserQuery);
+  if (dbUser === undefined) {
+    if (password.length < 6) {
+      response.status(400);
+      response.send("Password is too short");
+    } else {
+      const hashedPassword = await bcrypt.hash(request.body.password, 10);
+      const createUserQuery = `
+      INSERT INTO 
+        user (username, password, name, gender) 
+      VALUES 
+        (
+          '${username}', 
+          '${name}',
+          '${hashedPassword}', 
+          '${gender}'
+        )`;
+      const dbResponse = await db.run(createUserQuery);
+      const newUserId = dbResponse.lastID;
+      response.send("User created successfully");
+    }
+  } else {
+    response.status = 400;
+    response.send("User already exists");
+  }
+});
+
+/* app.post("/register", async (request, response) => {
   try {
     const { username, password, name, gender } = request.body;
     const selectUserQuery = "SELECT * FROM user WHERE username = ?";
@@ -65,7 +95,7 @@ app.post("/register", async (request, response) => {
     response.status(500);
     response.send("Internal Server Error");
   }
-});
+}); */
 
 app.post("/login", async (request, response) => {
   try {
