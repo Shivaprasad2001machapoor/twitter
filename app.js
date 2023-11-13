@@ -19,53 +19,29 @@ const initializeDB = async () => {
 
 initializeDB();
 
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).json({ message: "Invalid JWT Token" });
+const verifyToken = (request, response, next) => {
+  let jwtToken;
+  const authHeader = request.headers["authorization"];
+  console.log(authHeader);
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
   }
-
-  jwt.verify(token, "nknknrrfllffl", (err, user) => {
-    if (err) {
-      return res.status(401).json({ message: "Invalid JWT Token" });
-    }
-    req.user = user;
-    next();
-  });
+  if (jwtToken === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "jbbccbcbecbeibwcj", async (error, payload) => {
+      if (error) {
+        response.status(401);
+        response.send("Invalid JWT Token");
+      } else {
+        next();
+      }
+    });
+  }
 };
 
-app.post("/register/", async (request, response) => {
-  const { username, password, name, gender } = request.body;
-  const selectUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
-  const dbUser = await db.get(selectUserQuery);
-  if (dbUser === undefined) {
-    if (password.length < 6) {
-      response.status(400);
-      response.send("Password is too short");
-    } else {
-      const hashedPassword = await bcrypt.hash(request.body.password, 10);
-      const createUserQuery = `
-      INSERT INTO 
-        user (username, password, name, gender) 
-      VALUES 
-        (
-          '${username}', 
-          '${name}',
-          '${hashedPassword}', 
-          '${gender}'
-        )`;
-      const dbResponse = await db.run(createUserQuery);
-      const newUserId = dbResponse.lastID;
-      response.send("User created successfully");
-    }
-  } else {
-    response.status = 400;
-    response.send("User already exists");
-  }
-});
-
-/* app.post("/register", async (request, response) => {
+app.post("/register", async (request, response) => {
   try {
     const { username, password, name, gender } = request.body;
     const selectUserQuery = "SELECT * FROM user WHERE username = ?";
@@ -95,7 +71,9 @@ app.post("/register/", async (request, response) => {
     response.status(500);
     response.send("Internal Server Error");
   }
-}); */
+});
+
+// Existing code ...
 
 app.post("/login", async (request, response) => {
   try {
@@ -111,19 +89,20 @@ app.post("/login", async (request, response) => {
     if (dbUser === undefined) {
       console.log("Invalid User");
       response.status(400);
-      response.send("Invalid User");
+      response.send("Invalid user");
     } else {
       const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
       if (isPasswordMatched === true) {
         const payload = {
           username: username,
         };
-        const jwtToken = jwt.sign(payload, "nknknrrfllffl");
+        const jwtToken = jwt.sign(payload, "jbbccbcbecbeibwcj");
         response.send({ jwtToken });
+        console.log(jwtToken);
       } else {
         console.log("Invalid Password");
         response.status(400);
-        response.send("Invalid Password");
+        response.send("Invalid password");
       }
     }
   } catch (error) {
@@ -133,36 +112,18 @@ app.post("/login", async (request, response) => {
   }
 });
 
-/* app.post("/login", async (request, response) => {
-  const { username, password } = request.body;
-  const selectUserQuery = "SELECT * FROM user WHERE username = ?";
-  const dbUser = await db.get(selectUserQuery, [username]);
-  if (dbUser === undefined) {
-    response.status(400);
-    response.send("Invalid user");
-  } else {
-    const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
-    if (isPasswordMatched) {
-      const token = jwt.sign({ user_id: dbUser.user_id }, SECRET_KEY);
-      response.send({ jwtToken: token });
-    } else {
-      response.status(400);
-      response.send("Invalid password");
-    }
-  }
-}); */
-
 app.get("/user/tweets/feed", verifyToken, async (request, response) => {
   try {
     const { user_id } = request.payload;
     const getTweetsFeedQuery = `
       SELECT 
+        tweet_id,
         username,
         tweet,
         date_time AS dateTime
       FROM 
-        follower
-      INNER JOIN tweet ON follower.following_user_id = tweet.user_id
+        tweet
+      INNER JOIN follower ON follower.following_user_id = tweet.user_id
       INNER JOIN user ON user.user_id = follower.following_user_id
       WHERE 
         follower.follower_user_id = ${user_id}

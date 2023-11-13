@@ -10,10 +10,17 @@ POST http://localhost:3000/register
 ###
 
 POST http://localhost:3000/login
+Content-Type: application/json
 
 {
   "username":"JoeBiden",
   "password":"biden@123"
 }
+
+###
+
+GET http://localhost:3000/user/tweets/feed
+
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpvZUJpZGVuIiwiaWF0IjoxNjk5ODY5Mjc4fQ.QL9RLdHfsuwltYM1Sq4Y09D4-tRlpMW6NvVL845V5RE
 
 ###
