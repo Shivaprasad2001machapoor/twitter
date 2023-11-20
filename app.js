@@ -21,7 +21,7 @@ initializeDB();
 
 const verifyToken = (request, response, next) => {
   let jwtToken;
-  const authHeader = request.headers["authorization"];
+  const authHeader = request.headers["Authorization"]; // Use uppercase "A"
   console.log(authHeader);
   if (authHeader !== undefined) {
     jwtToken = authHeader.split(" ")[1];
